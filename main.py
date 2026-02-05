@@ -2,6 +2,7 @@ import os
 from fastapi import FastAPI
 import pycardano as pyc
 from cardano_Apis import app
+from dotenv import load_dotenv
 from pycardano import (
                         BlockFrostChainContext, 
                         Network, 
@@ -14,15 +15,16 @@ from pycardano import (
 
 # --- 1. CONFIGURATION ---
 # Your verified Blockfrost Project ID for Preprod
-PROJECT_ID = "preprodjay9yDspQlStomPpCjwJUFFLQ3rqXBqL"
+PROJECT_ID = os.getenv("PROJECT_ID")
 
 # Addresses from your payload
-SENDER_ADDR = "addr_test1vps2yazypdvh9h9vjwqm52c32a6gaj79528ed9jcdtrs6cgk7f65k"
-RECIPIENT_ADDR = "addr_test1vqeux7xwusdju9dvsj8h7mca9aup2k439kfmwy773xxc2hcu7zy99"
-AMOUNT_LOVELACE = 1000000  # 1 ADA
+SENDER_ADDR = os.getenv("SENDER_ADDR") 
+RECIPIENT_ADDR = os.getenv("RECIPIENT_ADDR") 
+AMOUNT_LOVELACE = int(os.getenv("AMOUNT_LOVELACE", "1000000"))
+
 
 # Path to your signing key inside my directory
-KEY_PATH = "/home/software-engineer/mam-laka/cardano/wallet/sender/payment.skey"
+KEY_PATH = os.getenv("KEY_PATH")
 
 # --- 2. INITIALIZE CONTEXT ---
 # Network.TESTNET maps to the Preprod/Preview environments in PyCardano

@@ -15,10 +15,10 @@ app = FastAPI(title="Cardano Shelly APIs for transaction", version="1.0")
 
 # --CONFIGURATION--
 
-PROJECT_ID = "preprodjay9yDspQlStomPpCjwJUFFLQ3rqXBqL"
-MASTER_KEY_PATH = "/home/software-engineer/mam-laka/cardano/wallet/sender/payment.skey"
+PROJECT_ID = os.getenv("PROJECT_ID")
+MASTER_KEY_PATH = os.getenv("MASTER_KEY_PATH")
 MASTER_SKEY = PaymentSigningKey.load(MASTER_KEY_PATH)
-MASTER_ADD = Address.from_primitive("addr_test1vps2yazypdvh9h9vjwqm52c32a6gaj79528ed9jcdtrs6cgk7f65k")
+MASTER_ADD = Address.from_primitive(os.getenv("MASTER_ADDR"))
 
 # -- calling the context for blockchain interaction where all blockchain queries( UTXos, Transactions, Balances) all go through
 
