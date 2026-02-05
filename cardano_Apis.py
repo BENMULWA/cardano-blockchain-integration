@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, status
+from dotenv import load_dotenv
 from pycardano import(
     BlockFrostChainContext,
     Network,
@@ -11,21 +12,35 @@ from pycardano import(
 )
 import os
 
-app = FastAPI(title="Cardano Shelly APIs for transaction", version="1.0")
+# Load env
+load_dotenv()
 
-# --CONFIGURATION--
+app = FastAPI(title="Cardano Shelley APIs for transaction", version="1.0")
 
 PROJECT_ID = os.getenv("PROJECT_ID")
 MASTER_KEY_PATH = os.getenv("MASTER_KEY_PATH")
+SENDER_ADDR = os.getenv("SENDER_ADDR")
+
+print("DEBUG PROJECT_ID:", PROJECT_ID) 
+print("DEBUG MASTER_KEY_PATH:", MASTER_KEY_PATH) 
+print("DEBUG SENDER_ADDR:", SENDER_ADDR)    
+
+# Guard clause
+if not PROJECT_ID or not MASTER_KEY_PATH or not SENDER_ADDR:
+    raise RuntimeError("Missing environment variables. Check your .env file.")
+
+# Load signing key
 MASTER_SKEY = PaymentSigningKey.load(MASTER_KEY_PATH)
-MASTER_ADD = Address.from_primitive(os.getenv("MASTER_ADDR"))
 
-# -- calling the context for blockchain interaction where all blockchain queries( UTXos, Transactions, Balances) all go through
+# Convert sender address string into Address object
+MASTER_ADD = Address.from_primitive(SENDER_ADDR)
 
-context= BlockFrostChainContext(
+# Use base_url instead of deprecated network arg
+context = BlockFrostChainContext(
     project_id=PROJECT_ID,
     network=Network.TESTNET
-)   
+)
+
 
 # 1. APi -- generating the shelly adresses
 

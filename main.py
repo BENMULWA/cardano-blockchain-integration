@@ -4,16 +4,19 @@ import pycardano as pyc
 from cardano_Apis import app
 from dotenv import load_dotenv
 from pycardano import (
-                        BlockFrostChainContext, 
-                        Network, 
-                        Address, 
-                        TransactionBuilder, 
-                        TransactionOutput, 
-                        PaymentSigningKey,
-                        PaymentVerificationKey
-                    )
+    BlockFrostChainContext, 
+    Address, 
+    TransactionBuilder, 
+    TransactionOutput, 
+    PaymentSigningKey,
+    Network,
+    PaymentVerificationKey
+)
 
 # --- 1. CONFIGURATION ---
+# Load env first
+load_dotenv()
+
 # Your verified Blockfrost Project ID for Preprod
 PROJECT_ID = os.getenv("PROJECT_ID")
 
@@ -22,41 +25,51 @@ SENDER_ADDR = os.getenv("SENDER_ADDR")
 RECIPIENT_ADDR = os.getenv("RECIPIENT_ADDR") 
 AMOUNT_LOVELACE = int(os.getenv("AMOUNT_LOVELACE", "1000000"))
 
-
 # Path to your signing key inside my directory
-KEY_PATH = os.getenv("KEY_PATH")
+KEY_PATH = os.getenv("MASTER_KEY_PATH")   # FIXED: match .env variable name
 
 # --- 2. INITIALIZE CONTEXT ---
-# Network.TESTNET maps to the Preprod/Preview environments in PyCardano
+# Use base_url instead of deprecated network arg
+from blockfrost import ApiUrls
+
+# Correct initialization for Preprod
 context = BlockFrostChainContext(
     project_id=PROJECT_ID,
-    network=Network.TESTNET
+    base_url=ApiUrls.preprod.value
 )
 
+
 # --- 3. VALIDATION LOGIC ---
-def validate_address_setup(sender_addr: str,KEY_PATH: str) -> bool:
-    """Checks if the address is a valid Cardano Testnet address and matches it to the appropratesigning key."""
+
+# --- 3. VALIDATION LOGIC ---
+def validate_address_setup(sender_addr: str, key_path: str):
     try:
-        if not os.path.exists(KEY_PATH):
-            print(f"Validation Error: Signing key not found at {KEY_PATH}")
+        if not os.path.exists(key_path):
+            print(f"Validation Error: Signing key not found at {key_path}")
             return False
-        
+
         a = Address.from_primitive(sender_addr)
-        if a.network != Network.TESTNET:
+        
+        # FIX 1: Compare against the Network enum
+        if a.network != Network.TESTNET: 
             print(f"Validation Error: {sender_addr} is not a Testnet address.")
             return False
-        
-        skey= PaymentSigningKey.load(KEY_PATH)
-        vkey= PaymentVerificationKey.from_signing_key(skey)
 
+        skey = PaymentSigningKey.load(key_path)
+        vkey = PaymentVerificationKey.from_signing_key(skey)
+        
+        # FIX 2: Use Network.TESTNET instead of 0
         derived_addr = Address(payment_part=vkey.hash(), network=Network.TESTNET)
+
         if str(derived_addr) != sender_addr:
-            print(f"Validation Error: The signing key does not match the address {sender_addr}.")
-        
-        
+            print(f"Validation Error: The signing key does not match the address.")
+            print(f"Expected: {derived_addr}")
+            print(f"Actual:   {sender_addr}")
+            return False
+
         return skey
     except Exception as e:
-        print(f"setup -Validation Error: {e}")
+        print(f"Setup Validation Error: {e}")
         return False
 
 # --- 4. TRANSACTION LOGIC ---
@@ -70,13 +83,8 @@ def run_transaction():
 
     try:
         # Load the signing key from my folder
-        if not os.path.exists(KEY_PATH):
-            print(f"Error: Signing key not found at {KEY_PATH}")
-            return
-        
         psk = PaymentSigningKey.load(KEY_PATH)
         print("Successfully loaded signing key.")
-
 
         # Initialize Builder
         builder = TransactionBuilder(context)
@@ -89,24 +97,21 @@ def run_transaction():
             TransactionOutput(Address.from_primitive(RECIPIENT_ADDR), AMOUNT_LOVELACE)
         )
 
-
         # 5 Build and Sign
-        # This automatically calculates fees and handles 'change' back to sender
         signed_tx = builder.build_and_sign(
             signing_keys=[psk],
             change_address=Address.from_primitive(SENDER_ADDR)
         )
 
         # Check UTXOs at the sender address
-        utxos = context.utxos(SENDER_ADDR)
+        utxos = context.utxos(Address.from_primitive(SENDER_ADDR))
         if not utxos:
             print(f"Error: No UTXOs found at {SENDER_ADDR}. Please fund this wallet.")
             return
         
         print(f"Found {len(utxos)} UTXO(s). Building transaction...")
 
-
-    # inspect trasction details before signing
+        # Inspect transaction details before signing
         print("\n Transaction Details Before Signing")
         print("-" * 30)
         print("Transaction Fee:", builder.fee) 
@@ -115,8 +120,6 @@ def run_transaction():
         print(f"Transaction ID: {signed_tx.id}")
         print("Inputs:", builder.inputs)
         print("-" * 30)
-
-
 
         # Submit to the blockchain via Blockfrost api
         print("\nSubmitting transaction to the network...")
